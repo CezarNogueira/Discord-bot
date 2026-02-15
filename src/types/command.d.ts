@@ -15,14 +15,6 @@ export interface Command {
   /** URL do GIF para ilustrar o comando */
   gif?: string;
   /** Rank/nível necessário para usar o comando */
-  rank?: string;
-  /** Custo de mana ou energia */
-  manaCost?: string;
-  /** Tipo do comando (Ataque, Defesa, Suporte, etc.) */
-  type?: string;
-  /** Observações especiais sobre o comando */
-  obs?: string;
-  /** Cooldown em segundos antes de poder usar novamente */
   cooldown?: number;
 }
 

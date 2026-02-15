@@ -14,11 +14,15 @@ import { z } from "zod";
 const commandObjectSchema = z.object({
   description: z.string().min(1),
   gif: z.string().url().optional(),
-  rank: z.string().optional(),
-  manaCost: z.string().optional(),
-  type: z.string().optional(),
-  obs: z.string().optional(),
   cooldown: z.number().positive().optional(),
+  color: z.string().optional(),
+  title: z.string().optional(),
+  author_name: z.string().optional(),
+  author_url: z.string().url().optional(),
+  author_icon: z.string().url().optional(),
+  thumbnail_url: z.string().url().optional(),
+  footer_text: z.string().optional(),
+  footer_icon: z.string().url().optional(),
 });
 
 // Schema que aceita tanto string quanto objeto para compatibilidade

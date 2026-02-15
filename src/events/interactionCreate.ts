@@ -1,11 +1,10 @@
 /**
  * Manipulador de eventos de interação do Discord
- * 
- * Este módulo processa slash commands e responde com embeds estilizados
+ * * Este módulo processa slash commands e responde com embeds estilizados
  * contendo informações sobre comandos de RPG, incluindo GIFs quando disponíveis
  */
 
-import { Client, ChatInputCommandInteraction, Interaction, EmbedBuilder } from "discord.js";
+import { Client, Interaction, EmbedBuilder, MessageFlags, ColorResolvable } from "discord.js";
 import { loadCommands } from "../utils/commandLoader";
 
 // Map para armazenar cooldowns por usuário e comando: "userId-commandName" -> timestamp
@@ -61,9 +60,9 @@ export default (client: Client) => {
       const commandData = commands[interaction.commandName];
 
       if (!commandData) {
-        await (interaction as ChatInputCommandInteraction).reply({
+        await interaction.reply({
           content: `❌ Comando **${interaction.commandName}** não encontrado.`,
-          ephemeral: true,
+          flags: MessageFlags.Ephemeral,
         });
         return;
       }
@@ -85,56 +84,88 @@ export default (client: Client) => {
             })
             .setTimestamp();
 
-          await (interaction as ChatInputCommandInteraction).reply({
+          await interaction.reply({
             embeds: [cooldownEmbed],
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
           return;
         }
       }
 
-      // Criar embed estilizado
-      const embed = new EmbedBuilder()
-        .setColor(0x0099FF)
-        .setAuthor({
-          name: `${interaction.user.displayName} usou o comando`,
-          iconURL: interaction.user.displayAvatarURL(),
-        });
+      // Criar embed estilizado base
+      const embed = new EmbedBuilder();
 
       if (typeof commandData === 'string') {
         // Formato antigo (apenas string)
+        embed.setColor(0x0099FF);
+        embed.setAuthor({
+          name: `${interaction.user.displayName} usou o comando`,
+          iconURL: interaction.user.displayAvatarURL(),
+        });
         embed.setDescription(commandData);
         embed.setTitle(`${interaction.commandName.toUpperCase()}`);
+        
       } else {
-        // Novo formato (objeto com propriedades)
-        const commandName = interaction.commandName.toUpperCase();
-        embed.setTitle(`${commandName}`);
+        // Novo formato (objeto com propriedades avançadas do Dashboard)
+        
+        // 1. Aplicar Cor (Se não tiver, usa azul padrão)
+        embed.setColor((commandData.color as ColorResolvable) || 0x0099FF);
+
+        // 2. Aplicar Autor
+        if (commandData.author_name) {
+          embed.setAuthor({
+            name: commandData.author_name,
+            url: commandData.author_url || undefined,
+            iconURL: commandData.author_icon || undefined,
+          });
+        } else {
+          // Se não definiu um autor fixo no painel, usa quem digitou o comando
+          embed.setAuthor({
+            name: `${interaction.user.displayName} usou o comando`,
+            iconURL: interaction.user.displayAvatarURL(),
+          });
+        }
+
+        // 3. Aplicar Título e Descrição
+        embed.setTitle(commandData.title || `${interaction.commandName.toUpperCase()}`);
         embed.setDescription(commandData.description);
         
+        // 4. Aplicar Imagens (GIF principal e Miniatura)
         if (commandData.gif) {
           console.log("Setting GIF:", commandData.gif); // Debug log
           embed.setImage(commandData.gif);
         }
+        if (commandData.thumbnail_url) {
+          embed.setThumbnail(commandData.thumbnail_url);
+        }
 
-        // Definir cooldown após uso bem-sucedido
+        // 5. Aplicar Rodapé e registrar Cooldown
+        let footerText = commandData.footer_text || "";
+        
         if (commandData.cooldown) {
           setCooldown(interaction.user.id, interaction.commandName, commandData.cooldown);
           
-          // Adicionar footer com informação do cooldown
-          embed.setFooter({
-            text: `⏱️ Cooldown: ${commandData.cooldown}s`
-          });
+          if (footerText) {
+            footerText += ` | ⏱️ Cooldown: ${commandData.cooldown}s`;
+          } else {
+            footerText = `⏱️ Cooldown: ${commandData.cooldown}s`;
+          }
+        }
+
+        if (footerText) {
+          embed.setFooter({ text: footerText });
         }
       }
 
-      await (interaction as ChatInputCommandInteraction).reply({ 
+      await interaction.reply({ 
         embeds: [embed] 
       });
+      
     } catch (error) {
       console.error("Error in interaction:", error);
-      await (interaction as ChatInputCommandInteraction).reply({
+      await interaction.reply({
         content: "❌ Ocorreu um erro ao processar o comando.",
-        ephemeral: true,
+        flags: MessageFlags.Ephemeral,
       });
     }
   });

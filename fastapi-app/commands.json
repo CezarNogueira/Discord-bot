@@ -1,8 +1,1 @@
-{
-  "protego": {
-    "description": "✨Efeito: Anula 50% do Dano Recebido e Anula efeitos do ataque\n📕 Rank: 1º Ano\n💙Custo de Mana: 10% de Mana Base\n🔍Tipo: Defesa\nObs: Não funciona contra \"Imperdoáveis\"",
-    "gif": "https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExNnVzcjE2cWttd3Y5dzk0eHlwbzdpNXF4YThoZDhranhlMHQxdDUwZSZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/17UKXE4unapizfZ66H/giphy.gif",
-    "cooldown": 30
-  },
-  "teste1": "string"
-}
+{}

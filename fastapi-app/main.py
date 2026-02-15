@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from pathlib import Path
 from pydantic import BaseModel
 from typing import Optional, Union
+from fastapi.responses import RedirectResponse
 import json
 
 app = FastAPI(title="Commands API")
@@ -9,21 +10,22 @@ DB = Path(__file__).parent / "commands.json"  # commands.json ao lado
 
 @app.get("/")
 async def root():
-    return {
-        "status": "Online",
-        "mensagem": "API de Comandos do Bot funcionando!",
-        "interface": "Acesse http://127.0.0.1:8000/docs para ver a interface gráfica."
-    }
+    # Redireciona a página principal direto para a porta do Streamlit (8501)
+    return RedirectResponse(url="http://127.0.0.1:8501")
 
 # Modelo para comando completo
 class CommandData(BaseModel):
     description: str
     gif: Optional[str] = None
-    rank: Optional[str] = None
-    manaCost: Optional[str] = None
-    type: Optional[str] = None
-    obs: Optional[str] = None
     cooldown: Optional[int] = None
+    color: Optional[str] = None
+    title: Optional[str] = None
+    author_name: Optional[str] = None
+    author_url: Optional[str] = None
+    author_icon: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    footer_text: Optional[str] = None
+    footer_icon: Optional[str] = None
 
 # Modelo para adicionar comando (aceita string ou objeto)
 class AddCommandRequest(BaseModel):

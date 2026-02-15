@@ -1,19 +1,5 @@
 # 🤖 Discord RPG Bot
 
-Bot Discord modular para múltiplos RPGs construído com Node.js + TypeScript. Suporta comandos slash dinâmicos carregados via API REST ou arquivo JSON, com embeds estilizados e suporte a GIFs.
-
-## ✨ Funcionalidades
-
-- 🎯 **Comandos Slash Dinâmicos** - Carrega comandos automaticamente do JSON/API
-- 🎨 **Embeds Estilizados** - Respostas visuais com autor, título e cores personalizadas
-- 🎬 **Suporte a GIFs** - Adicione GIFs animados aos comandos para mais imersão
-- ⏱️ **Sistema de Cooldown** - Controle de tempo entre usos por usuário
-- 🔄 **Dual Source** - API FastAPI ou arquivo JSON local como fallback
-- 📝 **TypeScript** - Código type-safe com validação Zod
-- 🚀 **Hot Reload** - Desenvolvimento rápido com tsx
-- 🌐 **Multi-RPG** - Adaptável para qualquer sistema de RPG (Harry Potter, Naruto, etc.)
-- 🔧 **API REST** - CRUD completo de comandos via API HTTP
-
 ## 🛠️ Tecnologias
 
 - **Discord.js v14** - Biblioteca oficial para Discord
@@ -22,31 +8,7 @@ Bot Discord modular para múltiplos RPGs construído com Node.js + TypeScript. S
 - **tsx** - Runtime TypeScript rápido
 - **FastAPI** - API opcional para comandos (Python)
 - **dotenv** - Gerenciamento de variáveis de ambiente
-
-## 📁 Estrutura do Projeto
-
-```
-discord-bot/
-├── src/
-│   ├── commands/
-│   │   └── registerCommands.ts    # Registra slash commands no Discord
-│   ├── events/
-│   │   ├── ready.ts               # Evento de conexão do bot
-│   │   └── interactionCreate.ts   # Processa comandos dos usuários
-│   ├── types/
-│   │   └── command.d.ts           # Definições de tipos TypeScript
-│   ├── utils/
-│   │   └── commandLoader.ts       # Carrega comandos (API/JSON)
-│   └── index.ts                   # Arquivo principal do bot
-├── fastapi-app/
-│   ├── main.py                    # API FastAPI (opcional)
-│   ├── commands.json                # Dados dos comandos
-│   └── requirements.txt           # Dependências Python
-├── .env                           # Configurações (NÃO versionar!)
-├── .env.example                   # Modelo de configuração
-├── package.json                   # Dependências e scripts Node.js
-└── tsconfig.json                  # Configuração TypeScript
-```
+- **Streamlit** - Interface da Api (Python)
 
 ## 🔧 Instalação e Configuração
 
@@ -107,19 +69,13 @@ commands_API_URL=http://127.0.0.1:8000/commands
 ### 4. Registrar Comandos
 
 ```bash
-# Registra comandos slash no Discord
+# Registra comandos slash no Discord após ter criado ele na interface
 npm run register
 ```
 
 ## 🚀 Execução
 
-### Modo Simples (apenas bot)
-
-```bash
-npm run dev
-```
-
-### Modo Completo (bot + API)
+### Modo Completo (Bot + API + Interface)
 
 **Terminal 1 - Iniciar API FastAPI:**
 ```bash
@@ -132,6 +88,12 @@ python -m uvicorn main:app --reload
 npm run dev
 ```
 
+**Terminal 3 - Iniciar Interface:**
+```bash
+cd fastapi-app
+streamlit run dashboard.py
+```
+
 ### Produção
 
 ```bash
@@ -139,60 +101,7 @@ npm run build
 npm start
 ```
 
-## 📝 Formato dos Comandos
-
-### Formato Simples (String)
-```json
-{
-  "fireball": "🔥 Lança uma bola de fogo que causa 50 de dano"
-}
-```
-
-### Formato Completo (Objeto com GIF e Cooldown)
-```json
-{
-  "protego": {
-    "description": "・𝐏𝐑𝐎𝐓𝐄𝐆𝐎\nㅤ\n✨Efeito: Anula 50% do Dano Recebido e Anula efeitos do ataque\n\n📕 Rank: 1º Ano\n💙Custo de Mana: 10% de Mana Base\n🔍Tipo: Defesa\nObs: Não funciona contra \"Imperdoáveis\"",
-    "gif": "https://media.giphy.com/media/exemplo/giphy.gif",
-    "cooldown": 30
-  }
-}
-```
-
-### Propriedades Disponíveis
-
-- **`description`** (obrigatório): Texto do comando com formatação
-- **`gif`** (opcional): URL do GIF animado
-- **`rank`** (opcional): Rank/nível necessário
-- **`manaCost`** (opcional): Custo de mana/energia
-- **`type`** (opcional): Tipo do comando (Ataque, Defesa, etc.)
-- **`obs`** (opcional): Observações especiais
-- **`cooldown`** (opcional): Tempo em segundos antes de poder usar novamente
-
 ## 🎯 Como Usar
-
-### 📝 Adicionar Comandos
-
-**Método 1: Editar arquivo JSON**
-1. Edite `fastapi-app/commands.json`
-2. Adicione seu comando no formato desejado
-3. Execute `npm run register`
-
-**Método 2: Via API (Formato Direto)**
-```bash
-curl -X 'POST' \
-  'http://localhost:8000/commands/single' \
-  -H 'Content-Type: application/json' \
-  -d '{"protego": {"description": "🛡️ Escudo mágico", "cooldown": 30}}'
-```
-
-**Método 3: Via API (Formato Estruturado)**
-```bash
-curl -X 'POST' \
-  'http://localhost:8000/commands' \
-  -H 'Content-Type: application/json' \
-  -d '{"name": "protego", "command": {"description": "🛡️ Escudo mágico", "cooldown": 30}}'
-```
 
 ### 🎮 Usar no Discord
 1. Digite `/nomedomando` no servidor
@@ -219,93 +128,6 @@ const embed = new EmbedBuilder()
     name: `${interaction.user.displayName} usou o comando`,
     iconURL: interaction.user.displayAvatarURL(),
   });
-```
-
-### Adicionar Novo Sistema de RPG
-
-1. Crie novo arquivo JSON: `fastapi-app/dnd-commands.json`
-2. Modifique `.env`: `COMMANDS_API_URL=http://127.0.0.1:8000/dnd`
-3. Atualize a API FastAPI para nova rota
-4. Registre comandos: `npm run register`
-
-### Customizar Ícones por Tipo
-
-```typescript
-// Em interactionCreate.ts
-const iconMap = {
-  'Ataque': '⚔️',
-  'Defesa': '🛡️',
-  'Cura': '💚',
-  'Magia': '✨'
-};
-```
-
-## 📚 API Endpoints (FastAPI)
-
-### 📋 Consulta de Comandos
-- `GET /commands` - Lista todos os comandos
-- `GET /commands/{nome}` - Retorna comando específico
-
-### ➕ Adicionar Comandos
-- `POST /commands` - Adiciona comando (formato estruturado)
-- `POST /commands/single` - Adiciona um comando (formato direto JSON)
-- `POST /commands/batch` - Adiciona múltiplos comandos de uma vez
-
-### ✏️ Gerenciar Comandos
-- `PUT /commands/{nome}` - Atualiza comando existente
-- `DELETE /commands/{nome}` - Remove comando
-
-### 📖 Documentação
-- `GET /docs` - Documentação interativa Swagger UI
-- `GET /redoc` - Documentação alternativa ReDoc
-
-## 🔗 Exemplos de Uso da API
-
-### Adicionar Comando Único (Formato Direto)
-```bash
-curl -X 'POST' \
-  'http://localhost:8000/commands/single' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "expelliarmus": {
-    "description": "⚡ Desarma o oponente\n📕 Rank: 2º Ano",
-    "gif": "https://example.com/expelliarmus.gif",
-    "cooldown": 45
-  }
-}'
-```
-
-### Adicionar Múltiplos Comandos
-```bash
-curl -X 'POST' \
-  'http://localhost:8000/commands/batch' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "lumos": {
-    "description": "💡 Ilumina a ponta da varinha",
-    "cooldown": 5
-  },
-  "nox": {
-    "description": "🌑 Apaga a luz da varinha",
-    "cooldown": 3
-  }
-}'
-```
-
-### Adicionar Comando (Formato Estruturado)
-```bash
-curl -X 'POST' \
-  'http://localhost:8000/commands' \
-  -H 'Content-Type: application/json' \
-  -d '{
-  "name": "avada_kedavra",
-  "command": {
-    "description": "💀 Maldição Imperdoável - Mata instantaneamente",
-    "rank": "Proibido",
-    "type": "Imperdoável",
-    "cooldown": 300
-  }
-}'
 ```
 
 ## 🤝 Contribuição

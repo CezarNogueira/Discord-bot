@@ -1,6 +1,1 @@
-{
-  "dado": {
-    "description": "{{ random(1,100) }}",
-    "color": "#0099FF"
-  }
-}
+{}

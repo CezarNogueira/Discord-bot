@@ -80,18 +80,12 @@ npm run register
 **Terminal 1 - Iniciar API FastAPI:**
 ```bash
 cd fastapi-app
-python -m uvicorn main:app --reload
+uvicorn main:app --reload
 ```
 
 **Terminal 2 - Iniciar Bot:**
 ```bash
 npm run dev
-```
-
-**Terminal 3 - Iniciar Interface:**
-```bash
-cd fastapi-app
-streamlit run dashboard.py
 ```
 
 ### Produção

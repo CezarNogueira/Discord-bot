@@ -5,17 +5,64 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 from typing import Optional, Union, List, Literal
 import json
+import subprocess
+import asyncio
+import os
 
 app = FastAPI(title="Commands API")
 
 DB = Path(__file__).parent / "commands.json"
+
+# Diretório raiz do projeto (um nível acima de fastapi-app/)
+PROJECT_ROOT = Path(__file__).parent.parent
 
 # ── Garante que o commands.json existe ──────────────────────────────────────
 if not DB.exists():
     DB.write_text("{}", encoding="utf-8")
 
 # ==========================================
-# MODELS PARA ACTIONS SYSTEM
+# REGISTRO AUTOMÁTICO DE COMANDOS
+# ==========================================
+
+# Guarda o último resultado do register para o frontend consultar
+register_status: dict = {"running": False, "success": None, "output": "", "error": ""}
+
+async def run_register():
+    """Roda 'npm run register' em background no diretório raiz do projeto."""
+    global register_status
+    register_status = {"running": True, "success": None, "output": "", "error": ""}
+
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "npm", "run", "register",
+            cwd=str(PROJECT_ROOT),
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            # No Windows, npm é um .cmd — isso garante que funciona nos dois SOs
+            shell=(os.name == "nt"),
+        )
+        stdout, stderr = await proc.communicate()
+
+        register_status = {
+            "running": False,
+            "success": proc.returncode == 0,
+            "output": stdout.decode("utf-8", errors="replace").strip(),
+            "error":  stderr.decode("utf-8", errors="replace").strip(),
+        }
+    except Exception as e:
+        register_status = {
+            "running": False,
+            "success": False,
+            "output": "",
+            "error": str(e),
+        }
+
+def trigger_register():
+    """Dispara o register em background sem bloquear a resposta da API."""
+    asyncio.create_task(run_register())
+
+# ==========================================
+# MODELS
 # ==========================================
 
 class Condition(BaseModel):
@@ -111,7 +158,7 @@ def save_commands(data):
     DB.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
 
 # ==========================================
-# API ENDPOINTS  (prefixo /api para não colidir com o frontend)
+# API ENDPOINTS
 # ==========================================
 
 @app.get("/api/commands")
@@ -130,9 +177,17 @@ async def add_command(request: AddCommandRequest):
     data = load_commands()
     if request.name in data:
         raise HTTPException(status_code=400, detail=f"Command '{request.name}' already exists")
-    data[request.name] = request.command if isinstance(request.command, str) else request.command.model_dump(exclude_none=True)
+    data[request.name] = (
+        request.command if isinstance(request.command, str)
+        else request.command.model_dump(exclude_none=True)
+    )
     save_commands(data)
-    return {"message": f"Command '{request.name}' added successfully", "command": data[request.name]}
+    trigger_register()  # ← registra automaticamente
+    return {
+        "message": f"Command '{request.name}' added successfully",
+        "command": data[request.name],
+        "register": "running",
+    }
 
 @app.put("/api/commands/{name}")
 async def update_command(name: str, command: Union[str, CommandData]):
@@ -141,7 +196,12 @@ async def update_command(name: str, command: Union[str, CommandData]):
         raise HTTPException(status_code=404, detail=f"Command '{name}' not found")
     data[name] = command if isinstance(command, str) else command.model_dump(exclude_none=True)
     save_commands(data)
-    return {"message": f"Command '{name}' updated successfully", "command": data[name]}
+    trigger_register()  # ← re-registra automaticamente
+    return {
+        "message": f"Command '{name}' updated successfully",
+        "command": data[name],
+        "register": "running",
+    }
 
 @app.delete("/api/commands/{name}")
 async def delete_command(name: str):
@@ -150,7 +210,12 @@ async def delete_command(name: str):
         raise HTTPException(status_code=404, detail=f"Command '{name}' not found")
     deleted = data.pop(name)
     save_commands(data)
-    return {"message": f"Command '{name}' deleted successfully", "deleted_command": deleted}
+    trigger_register()  # ← remove do Discord também
+    return {
+        "message": f"Command '{name}' deleted successfully",
+        "deleted_command": deleted,
+        "register": "running",
+    }
 
 @app.post("/api/commands/batch")
 async def add_commands_batch(commands: dict):
@@ -164,31 +229,35 @@ async def add_commands_batch(commands: dict):
         added.append(name)
     if added:
         save_commands(data)
-    return {"message": f"Added {len(added)} commands", "added_commands": added, "errors": errors}
+        trigger_register()  # ← registra após batch
+    return {
+        "message": f"Added {len(added)} commands",
+        "added_commands": added,
+        "errors": errors,
+        "register": "running" if added else "skipped",
+    }
+
+@app.get("/api/register/status")
+async def register_status_endpoint():
+    """O frontend consulta este endpoint para saber se o register terminou."""
+    return register_status
 
 # ==========================================
 # FRONTEND — serve os arquivos estáticos do React
-# Precisa vir DEPOIS das rotas /api para não interceptar
 # ==========================================
 
 FRONTEND_DIR = Path(__file__).parent.parent / "frontend" / "dist"
 
 if FRONTEND_DIR.exists():
-    # Modo produção: serve o build do Vite
     app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
 
     @app.get("/{full_path:path}")
     async def serve_frontend(full_path: str):
         return FileResponse(FRONTEND_DIR / "index.html")
 else:
-    # Aviso no terminal se o build ainda não foi feito
     @app.get("/")
     async def frontend_not_built():
         return {
             "error": "Frontend não buildado.",
-            "instrucoes": [
-                "cd frontend",
-                "npm install",
-                "npm run build"
-            ]
+            "instrucoes": ["cd frontend", "npm install", "npm run build"]
         }

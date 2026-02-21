@@ -113,7 +113,19 @@ export async function loadCommands(): Promise<CommandBook> {
 
   if (apiUrl) {
     const res = await fetch(apiUrl);
-    if (!res.ok) throw new Error(`Failed to fetch commands: ${res.status}`);
+
+    if (!res.ok) throw new Error(`Failed to fetch commands: ${res.status} ${res.statusText}`);
+
+    const contentType = res.headers.get("content-type") ?? "";
+    if (!contentType.includes("application/json")) {
+      throw new Error(
+        `COMMANDS_API_URL retornou "${contentType}" em vez de JSON.\n` +
+        `Verifique se a URL está correta. A rota da API é /api/commands, não /commands.\n` +
+        `URL atual: ${apiUrl}\n` +
+        `URL correta: ${apiUrl.replace(/\/commands$/, "/api/commands")}`
+      );
+    }
+
     const json = await res.json();
     return commandSchema.parse(json);
   }

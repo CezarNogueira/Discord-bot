@@ -287,11 +287,9 @@ $RECYCLE.BIN/
 *.swp
 *.swo
 
-# Bot specific
-# Comentar se você quiser versionar os arquivos de comandos
-# commands.json
-# spells.json
-
 # Backup files
 *.bak
 *.backup
+
+# Comandos
+commands.json

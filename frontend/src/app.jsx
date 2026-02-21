@@ -448,8 +448,7 @@ function CommandList({ onNew, onEdit }) {
   const [commands, setCommands] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
-  const [expanded, setExpanded] = useState(null);
-  const [deleting, setDeleting] = useState(null);
+  const [expanded, setExpanded]   = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -464,10 +463,23 @@ function CommandList({ onNew, onEdit }) {
 
   useEffect(() => { load(); }, [load]);
 
+  const [deleting, setDeleting]   = useState(null); // name being deleted
+  const [regging, setRegging]     = useState(false); // register running after delete
+
   const del = async (name) => {
     setDeleting(name);
+    setRegging(false);
     await fetch(`${API}/commands/${name}`, { method: "DELETE" });
-    setDeleting(null); setExpanded(null); load();
+    setDeleting(null);
+    setRegging(true);
+    // Poll until register finishes, then refresh list
+    const poll = setInterval(async () => {
+      try {
+        const r = await fetch(`${API}/register/status`);
+        const s = await r.json();
+        if (!s.running) { clearInterval(poll); setRegging(false); load(); }
+      } catch { clearInterval(poll); setRegging(false); load(); }
+    }, 800);
   };
 
   const filtered = commands
@@ -484,6 +496,12 @@ function CommandList({ onNew, onEdit }) {
       </div>
 
       {error && <div className="alert alert-error">⚠ {error}</div>}
+      {regging && (
+        <div className="alert" style={{background:"#0a1228",border:"1px solid #5b8cff44",color:"var(--accent)",display:"flex",alignItems:"center",gap:10}}>
+          <div className="spinner" style={{width:14,height:14,borderWidth:2}}/>
+          Atualizando comandos no Discord…
+        </div>
+      )}
 
       {commands && (
         <div className="stat-grid">
@@ -563,7 +581,29 @@ function CommandEditor({ initial = null, editName = null, onBack }) {
   const [confirmMsg, setConfirmMsg] = useState(initial?.confirmationMessage || "");
   const [saving, setSaving]         = useState(false);
   const [error, setError]           = useState(null);
-  const [success, setSuccess]       = useState(false);
+  // "idle" | "registering" | "registered" | "reg_error"
+  const [regState, setRegState]     = useState("idle");
+  const [regOutput, setRegOutput]   = useState("");
+  const pollRef                     = useRef(null);
+
+  const stopPolling = () => { if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; } };
+
+  const pollRegister = () => {
+    stopPolling();
+    setRegState("registering");
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await fetch(`${API}/register/status`);
+        const s = await r.json();
+        if (!s.running) {
+          stopPolling();
+          setRegOutput(s.output || s.error || "");
+          setRegState(s.success ? "registered" : "reg_error");
+          if (s.success) setTimeout(onBack, 2000);
+        }
+      } catch { stopPolling(); setRegState("reg_error"); setRegOutput("Não foi possível verificar o status do registro."); }
+    }, 800);
+  };
 
   const previewDesc = renderPreview(description);
 
@@ -593,8 +633,7 @@ function CommandEditor({ initial = null, editName = null, onBack }) {
       );
       const json = await r.json();
       if (!r.ok) throw new Error(json.detail || "Erro desconhecido");
-      setSuccess(true);
-      setTimeout(onBack, 1200);
+      pollRegister();
     } catch (e) { setError(e.message); }
     finally { setSaving(false); }
   };
@@ -609,8 +648,26 @@ function CommandEditor({ initial = null, editName = null, onBack }) {
         </div>
       </div>
 
-      {error   && <div className="alert alert-error">✗ {error}</div>}
-      {success && <div className="alert alert-success">✓ Salvo com sucesso!</div>}
+      {error && <div className="alert alert-error">✗ {error}</div>}
+
+      {regState === "registering" && (
+        <div className="alert" style={{background:"#0a1228",border:"1px solid #5b8cff44",color:"var(--accent)",display:"flex",alignItems:"center",gap:10}}>
+          <div className="spinner" style={{width:14,height:14,borderWidth:2}}/>
+          Salvando e registrando comandos no Discord…
+        </div>
+      )}
+      {regState === "registered" && (
+        <div className="alert alert-success">
+          ✓ Comando registrado no Discord com sucesso! Redirecionando…
+          {regOutput && <div style={{marginTop:6,fontFamily:"var(--mono)",fontSize:"0.75rem",opacity:0.7}}>{regOutput}</div>}
+        </div>
+      )}
+      {regState === "reg_error" && (
+        <div className="alert alert-error">
+          ✗ Comando salvo, mas o registro no Discord falhou. Verifique as variáveis de ambiente (DISCORD_TOKEN, CLIENT_ID).
+          {regOutput && <div style={{marginTop:6,fontFamily:"var(--mono)",fontSize:"0.75rem",opacity:0.8,whiteSpace:"pre-wrap"}}>{regOutput}</div>}
+        </div>
+      )}
 
       <div className="tabs">
         {["📋 Básico","⚡ Actions","⚙️ Avançado"].map((t,i) => (
@@ -693,11 +750,18 @@ function CommandEditor({ initial = null, editName = null, onBack }) {
 
           <button
             className="btn btn-primary"
-            disabled={saving||success}
+            disabled={saving || regState === "registering" || regState === "registered"}
             style={{width:"100%",justifyContent:"center",padding:"14px",marginTop:4}}
             onClick={save}
           >
-            {saving?"Salvando…":success?"✓ Salvo!":isEdit?"💾 Salvar Alterações":"💾 Criar Comando"}
+            {saving
+              ? "Salvando…"
+              : regState === "registering"
+              ? <span style={{display:"flex",alignItems:"center",gap:8}}><span className="spinner" style={{width:14,height:14,borderWidth:2}}/>Registrando no Discord…</span>
+              : regState === "registered"
+              ? "✓ Registrado!"
+              : isEdit ? "💾 Salvar Alterações" : "💾 Criar Comando"
+            }
           </button>
         </div>
 

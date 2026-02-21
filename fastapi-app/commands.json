@@ -1,1 +1,19 @@
-{}
+{
+  "testar": {
+    "description": "Comando testar",
+    "color": "#5b8cff",
+    "title": "Teste",
+    "actions": [
+      {
+        "type": "random_reply",
+        "messages": [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+        ]
+      }
+    ]
+  }
+}
